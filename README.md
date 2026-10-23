@@ -1,5 +1,7 @@
 # dsh-paper-suite
 
+[![test](https://github.com/zhouxzh/dsh-paper-suite/actions/workflows/test.yml/badge.svg)](https://github.com/zhouxzh/dsh-paper-suite/actions/workflows/test.yml)
+
 论文套件：**一个 Host 插件 + 两个 skill**。插件负责必须被执行的动作（生成骨架、核对引用、编译、拉取证据），skill 负责必须被记住的判断规则（证据边界、中文 LaTeX 约定）。
 
 ## 组成
@@ -44,11 +46,23 @@ node scripts/install-skill.mjs --check    # 校验是否已装且为最新
 - **登记默认 dry-run**：`README.md`、`AGENTS.md`、`docs/code_repository_split.md` 只在 `applyRegistries=true` 时落盘。
 - **证据边界**：`paper_sync_evidence` 的扩展名白名单是硬约束。
 
+## 安全与权限边界
+
+这个插件会调用外部程序并写文件，公开使用前应知道它的边界：
+
+- **`paper_scaffold` / `paper_kit`** 会在你传入的绝对 `root` 下创建目录与文件；它们不会覆盖已存在的文件，但会创建新路径。
+- **`paper_sync_evidence`** 通过 `scp` 拉取文件。`host` 必须匹配 `[A-Za-z0-9][A-Za-z0-9._-]*`，远程路径必须以 `/` 或 `~/` 开头；这两条校验会阻止 `host` 被当成 `scp` 选项（例如 `-oProxyCommand=...`）。`scp` 以 `BatchMode=yes` 运行，不会交互式索要密码。
+- **`paper_build`** 会在指定工作区执行 `latexmk`。TeX 能读文件、能通过 `\write18` 执行命令，因此**不要对来源不可信的 `.tex` 运行编译**。
+- **`paper_audit`** 只读：读 `.tex` / `.bib` / manifest 并报告问题，不修改稿件。
+- **仓库登记**（`README.md`、`AGENTS.md`、`docs/code_repository_split.md`）默认 dry-run，只有 `applyRegistries=true` 才落盘。
+
 ## 测试
 
 ```bash
 npm test
 ```
+
+CI 在 Node 18 / 20 / 22 上跑同一套测试，并额外执行 `npm pack --dry-run` 校验发布文件清单。
 
 三组测试，全部离线：
 

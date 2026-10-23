@@ -4,7 +4,7 @@
  */
 
 import assert from 'node:assert/strict';
-import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { mkdtemp, readdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -13,12 +13,16 @@ import { buildPaper, parseLatexLog } from '../lib/build.js';
 import { auditCitations, collectCiteKeys, parseBib } from '../lib/cite.js';
 import { insertTableRow } from '../lib/registry.js';
 import { scaffoldPaper } from '../lib/scaffold.js';
-import { validateRemotePaths } from '../lib/sync.js';
+import { syncEvidence, validateHost, validateRemotePaths } from '../lib/sync.js';
 
 const failures = [];
-const check = (label, fn) => {
+/**
+ * Await the assertion body. A synchronous wrapper here silently discarded every
+ * async rejection, so async cases reported "ok" without ever being awaited.
+ */
+const check = async (label, fn) => {
 	try {
-		fn();
+		await fn();
 		console.log(`ok   ${label}`);
 	} catch (error) {
 		failures.push(`${label}: ${error.message}`);
@@ -31,7 +35,7 @@ const root = await mkdtemp(join(tmpdir(), 'paper-factory-'));
 try {
 	// 1. scaffold creates the expected shape
 	const first = await scaffoldPaper({ root, slug: 'demo-paper', title: '演示论文' });
-	check('scaffold creates files', () => {
+	await check('scaffold creates files', () => {
 		assert.ok(first.created.length >= 18, `expected >=18 files, got ${first.created.length}`);
 		assert.ok(first.created.includes('main.tex'));
 		assert.ok(first.created.includes('audit/author_verification_required.md'));
@@ -42,11 +46,11 @@ try {
 	const mainPath = join(first.dir, 'main.tex');
 	await writeFile(mainPath, '% hand written\n', 'utf8');
 	const second = await scaffoldPaper({ root, slug: 'demo-paper', title: '演示论文' });
-	check('scaffold is idempotent and preserves prose', async () => {
+	await check('scaffold is idempotent and preserves prose', async () => {
 		assert.equal(second.created.length, 0);
 		assert.ok(second.protectedSkipped.includes('main.tex'));
 	});
-	check('main.tex content survived', async () => {
+	await check('main.tex content survived', async () => {
 		assert.equal(await readFile(mainPath, 'utf8'), '% hand written\n');
 	});
 
@@ -64,16 +68,16 @@ try {
 @article{gamma,
   author = {C, D}, title = {U2}, journal = {J}, year = {2026}
 }`;
-	check('collects citation keys', () => {
+	await check('collects citation keys', () => {
 		const keys = collectCiteKeys(texFiles);
 		assert.deepEqual([...keys.keys()].sort(), ['alpha', 'beta']);
 	});
-	check('detects duplicate bib keys', () => {
+	await check('detects duplicate bib keys', () => {
 		const parsed = parseBib(bib);
 		assert.equal(parsed.duplicates.length, 1);
 		assert.equal(parsed.duplicates[0].key, 'gamma');
 	});
-	check('reports missing and uncited entries', () => {
+	await check('reports missing and uncited entries', () => {
 		const found = auditCitations({ texFiles, bibText: bib, bibPath: 'references.bib' });
 		const codes = found.map((item) => item.code);
 		assert.ok(codes.includes('missing-bib-entry'), 'beta should be missing');
@@ -82,7 +86,7 @@ try {
 	});
 
 	// 4. log parsing
-	check('parses latex log defects', () => {
+	await check('parses latex log defects', () => {
 		const log = [
 			'! Undefined control sequence.',
 			'l.12 \\foo',
@@ -102,28 +106,79 @@ try {
 	});
 
 	// 5. registry row insertion
-	check('inserts a registry row after the table', () => {
+	await check('inserts a registry row after the table', () => {
 		const md = ['| 研究线 | 工作区 |', '| --- | --- |', '| A | [a](a/) |', '', 'tail'].join('\n');
 		const edited = insertTableRow(md, '研究线', '| B | [b](b/) |');
 		assert.ok(edited?.changed);
 		assert.ok(edited.text.includes('| B | [b](b/) |\n\n' + 'tail'.replace('\n', '')) || edited.text.includes('| B |'));
 	});
-	check('reports an existing row instead of duplicating it', () => {
+	await check('reports an existing row instead of duplicating it', () => {
 		const md = ['| 研究线 | 工作区 |', '| --- | --- |', '| B | [b](b/) |'].join('\n');
 		const edited = insertTableRow(md, '研究线', '| B | [b](b/) |');
 		assert.equal(edited?.changed, false);
 	});
 
 	// 6. evidence boundary
-	check('refuses binary artifacts and accepts tables', () => {
+	await check('refuses binary artifacts and accepts tables', () => {
 		const verdict = validateRemotePaths(['/runs/metrics.csv', '/runs/model.pt', '/runs/preds.npz', '/runs/report.md']);
 		assert.deepEqual(verdict.allowed, ['/runs/metrics.csv', '/runs/report.md']);
 		assert.equal(verdict.findings.filter((item) => item.code === 'refused-artifact').length, 2);
 	});
 
+	await check('rejects host strings that scp would read as options', () => {
+		assert.equal(validateHost('ace2'), undefined);
+		assert.equal(validateHost('zhong3.example.org'), undefined);
+		for (const bad of ['-oProxyCommand=touch /tmp/pwned', 'host name', 'host;rm -rf /', '']) {
+			assert.equal(validateHost(bad)?.code, 'invalid-host', `should reject ${JSON.stringify(bad)}`);
+		}
+	});
+	await check('rejects relative remote paths', () => {
+		const verdict = validateRemotePaths(['metrics.csv', '~/runs/ok.csv']);
+		assert.deepEqual(verdict.allowed, ['~/runs/ok.csv']);
+		assert.equal(verdict.findings[0].code, 'relative-remote-path');
+	});
+	await check('CJK-only title yields a usable slug', async () => {
+		const cjk = await scaffoldPaper({ root, slug: '状态感知残差预测', title: '状态感知残差预测', dryRun: true });
+		assert.ok(cjk.dir.includes('状态感知残差预测'));
+	});
+	await check('a commented-out citation is not a missing entry', () => {
+		const commented = [
+			{ path: 'sections/a.tex', text: '% \\cite{ghost}\nText \\cite{real}.' }
+		];
+		const found = auditCitations({
+			texFiles: commented,
+			bibs: [{ path: 'references.bib', text: '@article{real, author={A}, title={T}, journal={J}, year={2026}}' }]
+		});
+		const missing = found.filter((item) => item.code === 'missing-bib-entry');
+		assert.equal(missing.length, 0, 'ghost citation must be ignored');
+	});
+	await check('evidence basename collisions are refused before scp', async () => {
+		const result = await syncEvidence({
+			workspace: join(root, 'demo-paper'),
+			host: 'ace2',
+			remotePaths: ['/a/metrics.csv', '/b/metrics.csv'],
+			dryRun: true
+		});
+		assert.ok(result.findings.some((item) => item.code === 'evidence-name-collision'));
+		assert.equal(result.planned.length, 0);
+	});
+	await check('failed scp leaves no staging file behind', async () => {
+		const result = await syncEvidence({
+			workspace: join(root, 'demo-paper'),
+			host: '127.0.0.1',
+			remotePaths: ['/definitely/missing.csv'],
+			timeoutMs: 8000
+		});
+		assert.ok(result.findings.some((item) => item.code === 'scp-failed'));
+		const leftovers = (await readdir(join(root, 'demo-paper', 'evidence'))).filter((name) =>
+			name.startsWith('.staging-')
+		);
+		assert.deepEqual(leftovers, []);
+	});
+
 	// 7. audit of a scaffolded workspace
 	const audit = await auditPaper({ dir: join(root, 'demo-paper') });
-	check('audit flags placeholders and a missing pdf', () => {
+	await check('audit flags placeholders and a missing pdf', () => {
 		const codes = audit.findings.map((item) => item.code);
 		assert.ok(codes.includes('pdf-missing'), 'pdf should be missing');
 		assert.ok(codes.includes('placeholder-section') || codes.includes('placeholder-author'));
@@ -136,7 +191,7 @@ try {
 const empty = await mkdtemp(join(tmpdir(), 'paper-factory-missing-'));
 try {
 	const result = await buildPaper({ dir: empty });
-	check('missing entry file degrades gracefully', () => {
+	await check('missing entry file degrades gracefully', () => {
 		assert.equal(result.ok, false);
 		assert.equal(result.findings[0].code, 'entry-not-found');
 	});
@@ -145,7 +200,7 @@ try {
 }
 
 if (failures.length > 0) {
-	console.error(`\n${failures.length} check(s) failed`);
+	console.error(`\n${failures.length} await check(s) failed`);
 	process.exit(1);
 }
 console.log('\nall smoke checks passed');

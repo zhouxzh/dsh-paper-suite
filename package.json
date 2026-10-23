@@ -1,6 +1,6 @@
 {
   "name": "dsh-paper-suite",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "private": true,
   "description": "Paper suite for DeepSeek Harness: a Chinese/English LaTeX paper scaffold, evidence-chain audit, build diagnostics and remote evidence sync, bundled with paper-evidence and paper-latex skills.",
   "type": "module",
@@ -33,5 +33,24 @@
     "skills:install": "node scripts/install-skill.mjs",
     "skills:check": "node scripts/install-skill.mjs --check"
   },
+  "engines": {
+    "node": ">=18"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/zhouxzh/dsh-paper-suite.git"
+  },
+  "homepage": "https://github.com/zhouxzh/dsh-paper-suite#readme",
+  "bugs": {
+    "url": "https://github.com/zhouxzh/dsh-paper-suite/issues"
+  },
+  "keywords": [
+    "deepseek-harness",
+    "dsh-plugin",
+    "latex",
+    "academic-writing",
+    "citation",
+    "research-tools"
+  ],
   "license": "MIT"
 }
