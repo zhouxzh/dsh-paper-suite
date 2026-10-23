@@ -1,8 +1,9 @@
 {
   "name": "dsh-paper-suite",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "private": true,
   "description": "Paper suite for DeepSeek Harness: a Chinese/English LaTeX paper scaffold, evidence-chain audit, build diagnostics and remote evidence sync, bundled with paper-evidence and paper-latex skills.",
+  "author": "Xianzhong Zhou <zhouxzh@gdut.edu.cn>",
   "type": "module",
   "main": "lib/index.js",
   "exports": {
