@@ -1,0 +1,7 @@
+# dsh-paper-suite bundle declaration: insert this plugin's Host row into the
+# composite. The Host half registers paper_scaffold, paper_audit, paper_build,
+# paper_sync_evidence and paper_kit. The skills under skills/ are plain files and
+# are installed into a skill root by `node scripts/install-skill.mjs`.
+- insert:
+    - id: dsh-paper-suite
+      name: dsh-paper-suite

@@ -1,0 +1,9 @@
+# Installed dependencies and packed artifacts
+node_modules/
+*.tgz
+
+# Test and build by-products
+coverage/
+*.log
+.DS_Store
+Thumbs.db
