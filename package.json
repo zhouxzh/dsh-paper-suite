@@ -36,7 +36,7 @@
   },
   "scripts": {
     "pretest": "node scripts/link-stub.mjs",
-    "test": "node --check lib/client.js && node test/smoke.mjs && node test/host.mjs && node test/skills.mjs",
+    "test": "node --check lib/client.js && node test/smoke.mjs && node test/host.mjs && node test/client.mjs && node test/skills.mjs",
     "skills:install": "node scripts/install-skill.mjs",
     "skills:check": "node scripts/install-skill.mjs --check"
   },
