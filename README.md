@@ -46,6 +46,34 @@ node scripts/install-skill.mjs --check    # 校验是否已装且为最新
 - **登记默认 dry-run**：`README.md`、`AGENTS.md`、`docs/code_repository_split.md` 只在 `applyRegistries=true` 时落盘。
 - **证据边界**：`paper_sync_evidence` 的扩展名白名单是硬约束。
 
+## 网页面板
+
+安装后 DSH 侧边栏会出现 **论文审计** 面板（`paper-suite`）。它读取 Host 的
+`GET /paper-suite/report.json`，不做任何写操作。
+
+面板回答三个问题：
+
+| 维度 | 检查内容 |
+|---|---|
+| **完整性** | 章节是否齐全且已撰写、claims 是否登记、每条 claim 是否有证据、PDF 是否存在且新于源文件 |
+| **结果一致性** | `\ref` 是否有对应 `\label`、`\includegraphics` 文件是否存在、每个 table 是否有 caption、摘要/结论里的数字能否在结果或 `evidence/` 中找到 |
+| **逻辑** | 引言是否有明确贡献、讨论是否写明局限、结论是否重申适用范围、claims 是否仍有 pending |
+
+**判定强度**：文件缺失、悬空引用、claim 无证据、PDF 过期属于 `error`（论文判 fail）；章节偏短、表格缺 caption、数字找不到属于 `warn`；"讨论有没有局限"这类启发式判断只报 `info`，不会把论文判失败。
+
+面板扫描的根目录来自插件配置 `repoRoot`，默认为 DSH 进程工作目录：
+
+```yaml
+- id: dsh-paper-suite
+  name: dsh-paper-suite
+  config:
+    repoRoot: D:/Github/nonstationary-mamba
+```
+
+每篇论文是根目录下**含 `main.tex` 的子目录**。单文件论文（所有 section 写在一个 `main.tex`）同样支持：此时按 `\section{}` 标题判断完整性，不要求使用 `sections/` 拆分布局。
+
+对应工具是 `paper_review`：传 `workspace` 审单篇，传 `root` 审整批。
+
 ## 安全与权限边界
 
 这个插件会调用外部程序并写文件，公开使用前应知道它的边界：

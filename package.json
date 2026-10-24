@@ -1,6 +1,6 @@
 {
   "name": "dsh-paper-suite",
-  "version": "0.1.5",
+  "version": "0.2.0",
   "private": true,
   "description": "Paper suite for DeepSeek Harness: a Chinese/English LaTeX paper scaffold, evidence-chain audit, build diagnostics and remote evidence sync, bundled with paper-evidence and paper-latex skills.",
   "author": "Xianzhong Zhou <zhouxzh@gdut.edu.cn>",
@@ -12,6 +12,9 @@
     },
     "./audit": {
       "default": "./lib/audit.js"
+    },
+    "./client": {
+      "default": "./lib/client.js"
     },
     "./package.json": "./package.json"
   },
@@ -26,11 +29,14 @@
   "dsh": {
     "bundle": {
       "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web"
     }
   },
   "scripts": {
     "pretest": "node scripts/link-stub.mjs",
-    "test": "node test/smoke.mjs && node test/host.mjs && node test/skills.mjs",
+    "test": "node --check lib/client.js && node test/smoke.mjs && node test/host.mjs && node test/skills.mjs",
     "skills:install": "node scripts/install-skill.mjs",
     "skills:check": "node scripts/install-skill.mjs --check"
   },

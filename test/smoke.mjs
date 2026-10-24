@@ -4,7 +4,7 @@
  */
 
 import assert from 'node:assert/strict';
-import { mkdtemp, readdir, readFile, rm, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -12,6 +12,7 @@ import { auditPaper } from '../lib/audit.js';
 import { buildPaper, parseLatexLog } from '../lib/build.js';
 import { auditCitations, collectCiteKeys, parseBib } from '../lib/cite.js';
 import { insertTableRow } from '../lib/registry.js';
+import { reviewPaper } from '../lib/review.js';
 import { scaffoldPaper } from '../lib/scaffold.js';
 import { syncEvidence, validateHost, validateRemotePaths } from '../lib/sync.js';
 
@@ -182,6 +183,49 @@ try {
 		const codes = audit.findings.map((item) => item.code);
 		assert.ok(codes.includes('pdf-missing'), 'pdf should be missing');
 		assert.ok(codes.includes('placeholder-section') || codes.includes('placeholder-author'));
+	});
+
+	// 8. review scoring
+	const review = await reviewPaper({ dir: join(root, 'demo-paper') });
+	await check('review scores a scaffolded paper and finds its gaps', () => {
+		assert.ok(['pass', 'warn', 'fail'].includes(review.verdict));
+		assert.equal(review.stats.sectionsTotal >= 9, true);
+		assert.ok(review.scores.completeness >= 0 && review.scores.completeness <= 100);
+		assert.ok(Array.isArray(review.findings) && review.findings.length > 0);
+		for (const item of review.findings) assert.ok(item.category !== undefined, `${item.code} lacks a category`);
+	});
+
+	// 9. a single-file manuscript is judged by headings, not by our file layout
+	const single = join(root, 'single-file-paper');
+	await mkdir(join(single, 'sections'), { recursive: true });
+	await writeFile(
+		join(single, 'main.tex'),
+		[
+			'\\documentclass{article}',
+			'\\begin{document}',
+			'\\begin{abstract}A sufficiently long abstract that describes the problem, the method and the result boundary.',
+			'\\end{abstract}',
+			'\\section{Introduction}\\label{sec:intro} This paper proposes a method.',
+			'\\section{Method} We describe the approach in detail.',
+			'\\section{Retrospective Protocol} The protocol and reproducibility contract.',
+			'\\section{Results} The measured values are reported here.',
+			'\\section{Conclusion} The scope does not generalize beyond this setting.',
+			'\\end{document}'
+		].join('\n'),
+		'utf8'
+	);
+	await writeFile(
+		join(single, 'references.bib'),
+		'@article{a,\n  author = {A},\n  title = {T},\n  journal = {J},\n  year = {2026}\n}\n',
+		'utf8'
+	);
+	const singleReview = await reviewPaper({ dir: single });
+	await check('single-file manuscript is not failed for using its own layout', () => {
+		const missing = singleReview.findings.filter(
+			(item) => item.code === 'section-missing' && item.severity === 'error'
+		);
+		assert.deepEqual(missing, [], 'heading-based detection should find every core section');
+		assert.equal(singleReview.stats.sections >= 6, true);
 	});
 } finally {
 	await rm(root, { recursive: true, force: true });
