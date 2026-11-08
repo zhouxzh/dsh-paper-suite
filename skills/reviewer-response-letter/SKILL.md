@@ -54,7 +54,7 @@ metadata:
 15. **版本命名跟随投稿历史**：`V1` = 初投稿，`V2` = 当前返修稿；回复信放 `V2/response letter/`，不得因草稿迭代出现 `V3`。
 16. **与 cover letter 共享身份元数据**：同一轮投稿中，cover letter 与 response letter 的作者全名（含称谓）、学院、学校、城市邮编国家、邮箱、期刊名、稿件标题、稿号和落款日期必须完全相同。两份文件的版式可以不同，但这些字段必须逐字一致；改一处就要同步另一处，并用 `paper-cover-letter` 的 `scripts/check_letter_identity.py` 核对。
 17. **地址只写到机构级**：收件人写 `Editorial Office` + 期刊名即可；作者地址写学院、学校、城市邮编、国家加邮箱，不写楼栋、房间号和门牌号。只有期刊指南明确要求完整邮政地址时才补充。
-18. **位置以最终编译 PDF 为准**：每条回复中的 `page X, left/right column, paragraph Y` 必须来自最终排版后的正文 PDF，不能沿用旧稿或源码行号。正文重新排版后必须重跑定位器并更新全部位置；旧位置一律视为待核查。
+18. **位置以实际上传的正文 PDF 为准**：每条回复中的 `page X, left/right column, paragraph Y` 必须来自投稿系统实际使用的那一版 PDF（通常是带红字的 markup 稿，因为干净版由系统根据上传文件生成）。本地另编的无颜色稿可能因颜色命令改变断行而分页不同，不能作为页码依据。正文重新排版后必须重跑定位器并更新全部位置；旧位置一律视为待核查。
 19. **红字比对源码，蓝字必须消失**：红色段落必须能在正文 LaTeX 源码中逐字找到（参考文献查 `.bib`）；`CLOSE` / `REVIEW` 说明有改写或编号差异，必须人工确认后才可通过。蓝色段落必须在正文源码中找不到；仍能找到即说明“删了但没删干净”。文本一致性不要用 PDF 比对，PDF 只用于位置。
 20. **网页投稿的文本框用手写摘要**：投稿系统通常强制填写“编辑部留言”和“审稿人回复”两个文本框。不要从 LaTeX 批量导出全文，也不要重复 25 条逐条回复；两个框各写 1 段纯文本：编辑部框写材料清单、回复结构、主要修改方向与作者/非一稿多投/利益冲突声明，审稿人框感谢各审稿人并指明详细逐条回复在 response letter PDF 附件中。**每个段落必须一整行，禁止硬换行**；详细回复只维护在 `response-letter.tex` 与其 PDF，避免两处内容不一致。
 21. **没有独立 cover letter 时并入首页**：若投稿系统不支持 cover letter，就把 cover letter 的三部分内容并入 response letter 首页：提交修订稿声明、三条左右主要修改、结果与作者/非一稿多投/利益冲突声明；随后删除 `cover-letter/` 目录，避免两份文件内容不一致。
@@ -63,6 +63,10 @@ metadata:
     - 编辑部留言用短文本，只写材料清单、作者/非一稿多投/利益冲突确认，不重复逐条回复；
     - 审稿人回复框用手写短文本：感谢各审稿人、说明全部意见已逐条回应、指明详细回复与修订位置见 response letter PDF 附件，并列出 3-5 条主要修改要点；不要把逐条回复全文粘进文本框；
     - PDF 回复信作为完整附件上传；若没有附件栏，则只填两个文本框。
+24. **回复信不写本地文件名**：不得出现 `manuscript-clean.pdf`、`markup-manuscript.pdf`、`response-letter.pdf` 等本地路径或文件名；投稿系统会重命名文件。需要指代时写 "the revised manuscript"、"the manuscript with highlighted revisions"、"the attached point-by-point response"。
+25. **编号必须由命令生成**：正文中的文献、图、表、公式一律用 `\cite`、`\ref`、`\eqref`。表格表头尤其容易写成 `[18][12][13][10]` 这类死数字，重排后全错。提交前运行 `scripts/check_hardcoded_refs.py` 扫描；正文出现硬编码即视为缺陷，审稿意见原文中的历史编号除外。
+26. **删除段落也要审计位置**：`deletedblock` 在修改稿中找不到，不能因此跳过。用其后紧跟的替换段落反推页位置，二者必须同页；没有替换段落的删除项必须人工确认，定位器会标记 `DELETED (location unverified)`。
+27. **改文即重审**：任何压缩、改写或增删之后，必须重跑三项审计——位置（对 markup 稿）、逐句文本、删除项位置；排版上移会让页码连锁失效，不能沿用上一轮结果。
 
 ## 目录约定
 
@@ -200,6 +204,7 @@ python scripts/locate_manuscript_positions.py `
 - 在 PDF 中按“页 → 栏 → 段落 → 行”定位；
 - 读取回复中已写的 `page N ... column ... paragraph N` 并比对；
 - `deletedblock` 在修订稿中找不到 = 正确（已删除）；找到了 = `STILL-PRESENT` 错误；
+- `deletedblock` 的页码通过其后紧跟的替换段落反查：同页 = `DELETED (location ok)`，不同页 = `DELETED @PAGE a->b` 错误，无替换段落 = `DELETED (location unverified)` 需人工确认；
 - 新增段落找不到 = `NOT-FOUND` 错误；
 - 页码不符 = `PAGE a->b` 错误；栏/段不符标为 `COLUMN?` / `PARA?`，需人工复核，因为 Poppler 有时把双栏合并成一个 block；
 - 若正文 PDF 带 `lineno` 行号，会附带提取印刷行号。
@@ -224,7 +229,8 @@ xelatex -interaction=nonstopmode -halt-on-error response-letter.tex
 
 - 在 `response letter/` 目录内编译成功，不依赖论文根目录图片。
 - 日志无 `^!`、`Undefined`、`Missing character`、图片缺失。
-- 运行 `scripts/check_response_letter.py` 做静态检查。
+- 运行 `scripts/check_response_letter.py` 做静态检查；
+- 运行 `scripts/check_hardcoded_refs.py V2/sn-article.tex`，正文不得残留硬编码编号（回复信用 `--letter` 模式，仅作提示）。
 
 ## 常见故障与修法
 
@@ -252,7 +258,10 @@ xelatex -interaction=nonstopmode -halt-on-error response-letter.tex
 - [ ] 数字与单位同处数学环境
 - [ ] 参考文献重编号有说明
 - [ ] 每条修订段落都有 page/column/paragraph 位置
-- [ ] 定位器复核通过（页码全部匹配，栏/段差异已人工确认）
+- [ ] 定位器针对**实际上传的 markup 稿**复核通过（页码全部匹配，栏/段差异已人工确认）
+- [ ] 删除段落位置已通过替换段落反查同页，或已人工确认
+- [ ] 正文无硬编码文献/图/表/公式编号（`check_hardcoded_refs.py` 无正文命中）
+- [ ] 回复信与两个文本框不出现任何本地文件名
 - [ ] 红字逐字比对正文 LaTeX 源码（CLOSE/REVIEW 已人工确认）
 - [ ] 蓝字在正文源码中已不存在
 - [ ] 独立 XeLaTeX 编译无错误

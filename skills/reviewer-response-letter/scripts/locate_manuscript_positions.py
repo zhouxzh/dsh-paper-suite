@@ -6,9 +6,18 @@ Why PDF coordinates: page numbers, column and paragraph order change whenever
 the manuscript is re-typeset. Source line numbers are therefore useless for a
 response letter; the coordinates of the final PDF are the ground truth.
 
+Audit the PDF that is actually uploaded to the submission system (the
+highlighted/markup manuscript). A colour-free copy compiled separately can
+paginate differently, so it is NOT a valid reference for page numbers.
+
+Deleted passages cannot be found in the revised PDF. For those, the script
+locates the replacement passage that follows the deleted block and requires it
+to sit on the page stated for the deletion. Deletions without a following
+replacement are reported as unverified instead of silently passing.
+
 Usage:
     python locate_manuscript_positions.py \
-        --pdf ../out/sn-article.pdf \
+        --pdf ../out/markup-manuscript.pdf \
         --response response-letter.tex \
         --markdown work/positions.md
 
@@ -232,6 +241,22 @@ def strip_reference_label(text: str) -> str:
     return re.sub(r"^\s*\[\s*\d+\s*\]\s*[.]?\s*", "", text)
 
 
+ADDED_RE = re.compile(r"\\begin\{addedblock\}(.*?)\\end\{addedblock\}", re.S)
+
+
+def replacement_after(tex: str, position: int, window: int = 1500) -> str | None:
+    """Return the replacement text that follows a deleted block, if any.
+
+    Deleted passages are absent from the revised PDF, so their stated location
+    can only be checked through the passage that replaced them.
+    """
+    match = ADDED_RE.search(tex, position, position + window)
+    if not match:
+        return None
+    plain = latex_to_text(match.group(1))
+    return plain if len(re.findall(r"[A-Za-z0-9]+", plain)) >= 8 else None
+
+
 def extract_probes(tex: str) -> list[dict]:
     probes = []
     for match in BLOCK_RE.finditer(tex):
@@ -251,6 +276,7 @@ def extract_probes(tex: str) -> list[dict]:
             "stated_page": int(stated.group(1)) if stated else None,
             "stated_column": (stated.group(2).lower() if stated else None),
             "stated_paragraph": int(stated.group(3)) if stated and stated.group(3) else None,
+            "replacement": replacement_after(tex, match.end()) if kind == "deletedblock" else None,
         })
 
     return probes
@@ -288,7 +314,19 @@ def main() -> int:
         span = locate_probe(doc, probe_text, use_fuzzy=item["kind"] != "deletedblock")
         if span is None:
             if item["kind"] == "deletedblock":
-                status = "DELETED (ok)"      # absence from the revised PDF is correct
+                # Absence is correct; the stated location is checked through the
+                # replacement passage that follows the deleted text.
+                replacement = item.get("replacement")
+                rep_span = locate_probe(doc, replacement) if replacement else None
+                if rep_span is None:
+                    status = "DELETED (location unverified)"
+                else:
+                    rep_page = doc.tokens[rep_span[0]].page
+                    if item["stated_page"] is not None and item["stated_page"] != rep_page:
+                        status = f"DELETED @PAGE {item['stated_page']}->{rep_page}"
+                        mismatches += 1
+                    else:
+                        status = "DELETED (location ok)"
             else:
                 status = "NOT-FOUND"
                 mismatches += 1
@@ -347,6 +385,10 @@ def main() -> int:
         args.json.write_text(json.dumps(rows, ensure_ascii=False, indent=2), encoding="utf-8")
         print(f"JSON: {args.json}")
 
+    unverified = [r for r in rows if r["status"] == "DELETED (location unverified)"]
+    if unverified:
+        print(f"\nNOTE: {len(unverified)} deletion(s) have no replacement passage; "
+              "their stated locations need manual verification.")
     if warnings:
         print(f"\nNOTE: {warnings} passage(s) need manual column/paragraph verification.")
     if mismatches:
