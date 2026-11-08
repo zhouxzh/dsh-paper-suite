@@ -40,6 +40,7 @@ metadata:
 17. **地址只写到机构级**：收件人写 `Editorial Office` + 期刊名即可；作者地址写学院、学校、城市邮编、国家加邮箱，不写楼栋、房间号和门牌号。只有期刊指南明确要求完整邮政地址时才补充。
 18. **位置以最终编译 PDF 为准**：每条回复中的 `page X, left/right column, paragraph Y` 必须来自最终排版后的正文 PDF，不能沿用旧稿或源码行号。正文重新排版后必须重跑定位器并更新全部位置；旧位置一律视为待核查。
 19. **红字比对源码，蓝字必须消失**：红色段落必须能在正文 LaTeX 源码中逐字找到（参考文献查 `.bib`）；`CLOSE` / `REVIEW` 说明有改写或编号差异，必须人工确认后才可通过。蓝色段落必须在正文源码中找不到；仍能找到即说明“删了但没删干净”。文本一致性不要用 PDF 比对，PDF 只用于位置。
+20. **网页投稿另存纯文本**：投稿系统只给文本框时，用 `scripts/export_response_letter_text.py` 从 LaTeX 生成 `.txt`。纯文本保留 `Reviewer comment / Response / Revised manuscript text / Deleted manuscript text` 结构，颜色无法保留，因此用文字标签替代；**每个段落必须一整行，禁止硬换行**。
 
 ## 目录约定
 
@@ -179,7 +180,20 @@ python scripts/locate_manuscript_positions.py `
 
 结果写入 `work/positions.md`，不要提交。页码全部通过后才算位置审查完成。
 
-### 8. 独立编译与提交检查
+### 8. 纯文本导出（网页投稿系统）
+
+```powershell
+python scripts/export_response_letter_text.py `
+  "V2/response letter/response-letter.tex" `
+  -o "V2/response letter/response-letter.txt"
+```
+
+- 评论、回复、修订文字分别标注为 `Reviewer comment`、`Response`、`Revised manuscript text`、`Deleted manuscript text`；
+- 每个段落一整行，不能按列宽硬换行；
+- 不保留颜色，颜色语义改由上述标签表达；
+- 导出后检查：无 `\` 命令、25 个 comment/response 块完整、段落没有被拆行。
+
+### 9. 独立编译与提交检查
 
 ```powershell
 xelatex -interaction=nonstopmode -halt-on-error response-letter.tex
