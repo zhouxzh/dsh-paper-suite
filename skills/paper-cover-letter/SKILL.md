@@ -39,9 +39,9 @@ metadata:
 - 版式文件：随 skill 提供的 `references/european-academic-letter.lco`（DINmtext、`fromalign=right`、`fromrule=afteraddress`、`parskip=half`、`subject=titled`）。
 - 字体：`newtxtext` + `microtype`。
 - 段落：`parskip=half`，不首行缩进；`\clubpenalty`、`\widowpenalty` 设为 10000。
-- 收件人：编辑部全称 + 学会 + 街道地址 + 城市邮编 + 国家。
+- 收件人：只写 `Editorial Office` + 期刊名。线上投稿不需要街道地址；仅当期刊投稿指南明确要求邮寄地址时才补全。
 - 签名：`Dr. <Corresponding Author>`、`Corresponding Author`、学院、学校、邮箱。
-- 信头地址：固定三行（学院/学校、楼栋门牌、城市邮编国家）+ 独立邮箱行。禁止依赖自动换行——`scrlttr2` 会把 `No.` 与门牌号拆到两行，既不美观也会造成首页 overfull。用 `\AuthorAffiliationLines` 手写换行，地址正文用 `\scriptsize`，邮箱前用 `\\[-0.6ex]` 收紧。
+- 信头地址：学院、学校、城市邮编、国家，共三行 + 独立邮箱行；不写楼栋、房间号和门牌号，除非期刊明确要求。禁止依赖自动换行——`scrlttr2` 会把 `No.` 与门牌号拆到两行，既不美观也会造成首页 overfull。用 `\AuthorAffiliationLines` 手写换行，地址正文用 `\scriptsize`，邮箱前用 `\\[-0.6ex]` 收紧。
 
 ## 正文结构
 
