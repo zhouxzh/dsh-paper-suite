@@ -25,6 +25,7 @@ FIELDS = {
     "author": ["correspondingauthor", "AuthorName", "fromname"],
     "email": ["correspondingemail", "AuthorEmail", "fromemail"],
     "affiliation": ["affiliation", "AuthorAffiliation", "fromaddress"],
+    "affiliation_lines": ["affiliationlines", "AuthorAffiliationLines"],
 }
 
 
@@ -56,6 +57,7 @@ def read_definition(text: str, name: str) -> str | None:
 
 
 def normalize(value: str) -> str:
+    value = re.sub(r"(?m)%.*$", "", value)          # drop TeX comments
     # Keep the visible text of \href{...}{visible}.
     value = re.sub(r"\\href\{[^}]*\}\{([^}]*)\}", r"\1", value)
     value = re.sub(r"\\texttt\{([^}]*)\}", r"\1", value)

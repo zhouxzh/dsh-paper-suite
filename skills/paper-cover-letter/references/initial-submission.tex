@@ -19,7 +19,12 @@
 \newcommand{\ArticleType}{Original Article}
 
 \newcommand{\AuthorName}{Dr. Corresponding Author}
-\newcommand{\AuthorAffiliation}{School of Integrated Circuits\\Guangdong University of Technology\\Guangzhou 510006, Guangdong, P.R. China}
+\newcommand{\AuthorAffiliation}{School of Integrated Circuits, Guangdong University of Technology, Room 501, Science Building, No. 100 Waihuan West Road, Panyu District, Guangzhou 510006, Guangdong, P.R. China}
+% Display form: identical address, broken deliberately for the letterhead.
+\newcommand{\AuthorAffiliationLines}{%
+  School of Integrated Circuits, Guangdong University of Technology\\
+  Room 501, Science Building, No. 100 Waihuan West Road\\
+  Panyu District, Guangzhou 510006, Guangdong, P.R. China}
 \newcommand{\AuthorEmail}{author@example.edu}
 \newcommand{\AuthorShort}{Dr. Corresponding Author, Guangdong University of Technology, Guangzhou, China}
 
@@ -28,10 +33,14 @@
 \setkomavar{fromemail}{\AuthorEmail}
 \setkomavar{backaddress}{\AuthorShort}
 \setkomavar{signature}{\AuthorName\\Corresponding Author}
+% Fixed line breaks + e-mail on its own line: automatic wrapping can split
+% "No. 100 ..." across lines and make the header unreadable.
 \setkomavar{firsthead}{%
   \raggedleft
   {\bfseries \AuthorName}\\[-0.2ex]
-  {\footnotesize \AuthorAffiliation\enspace\texttt{\AuthorEmail}}}
+  {\scriptsize
+    \AuthorAffiliationLines\\[-0.6ex]
+    \texttt{\AuthorEmail}}}
 
 \begin{document}
 
