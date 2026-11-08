@@ -252,6 +252,7 @@ def extract_probes(tex: str) -> list[dict]:
             "stated_column": (stated.group(2).lower() if stated else None),
             "stated_paragraph": int(stated.group(3)) if stated and stated.group(3) else None,
         })
+
     return probes
 
 
@@ -319,21 +320,24 @@ def main() -> int:
             "stated_page": item["stated_page"],
         })
 
-    header = f"{'#':>2}  {'status':<18} {'page':<5} {'column':<6} {'para':<5} {'line':<7} probe"
+    header = (f"{'#':>2}  {'status':<16} {'page':<5} {'column':<6} "
+              f"{'para':<5} {'line':<7} probe")
     print(header)
     print("-" * len(header) + "-----")
     for index, row in enumerate(rows, start=1):
         page = f"{row['page']}" if row["page"] else "-"
-        print(f"{index:>2}  {row['status']:<18} {page:<5} {str(row['column'] or '-'):<6} "
-              f"{str(row['paragraph'] or '-'):<5} {str(row['line'] or '-'):<7} {row['probe'][:50]}")
+        print(f"{index:>2}  {row['status']:<16} {page:<5} "
+              f"{str(row['column'] or '-'):<6} {str(row['paragraph'] or '-'):<5} "
+              f"{str(row['line'] or '-'):<7} {row['probe'][:50]}")
 
     if args.markdown:
-        lines = ["| # | Status | Page | Column | Paragraph | Line | Probe |",
+        lines = ["| # | Position | Page | Column | Paragraph | Line | Probe |",
                  "|---|---|---|---|---|---|---|"]
         for index, row in enumerate(rows, start=1):
             lines.append(
-                f"| {index} | {row['status']} | {row['page'] or '-'} | {row['column'] or '-'} | "
-                f"{row['paragraph'] or '-'} | {row['line'] or '-'} | {row['probe'][:70].replace('|', '/')} |"
+                f"| {index} | {row['status']} | {row['page'] or '-'} | "
+                f"{row['column'] or '-'} | {row['paragraph'] or '-'} | {row['line'] or '-'} | "
+                f"{row['probe'][:70].replace('|', '/')} |"
             )
         args.markdown.parent.mkdir(parents=True, exist_ok=True)
         args.markdown.write_text("\n".join(lines) + "\n", encoding="utf-8")

@@ -39,6 +39,7 @@ metadata:
 16. **与 cover letter 共享身份元数据**：同一轮投稿中，cover letter 与 response letter 的作者全名（含称谓）、学院、学校、城市邮编国家、邮箱、期刊名、稿件标题、稿号和落款日期必须完全相同。两份文件的版式可以不同，但这些字段必须逐字一致；改一处就要同步另一处，并用 `paper-cover-letter` 的 `scripts/check_letter_identity.py` 核对。
 17. **地址只写到机构级**：收件人写 `Editorial Office` + 期刊名即可；作者地址写学院、学校、城市邮编、国家加邮箱，不写楼栋、房间号和门牌号。只有期刊指南明确要求完整邮政地址时才补充。
 18. **位置以最终编译 PDF 为准**：每条回复中的 `page X, left/right column, paragraph Y` 必须来自最终排版后的正文 PDF，不能沿用旧稿或源码行号。正文重新排版后必须重跑定位器并更新全部位置；旧位置一律视为待核查。
+19. **红字比对源码，蓝字必须消失**：红色段落必须能在正文 LaTeX 源码中逐字找到（参考文献查 `.bib`）；`CLOSE` / `REVIEW` 说明有改写或编号差异，必须人工确认后才可通过。蓝色段落必须在正文源码中找不到；仍能找到即说明“删了但没删干净”。文本一致性不要用 PDF 比对，PDF 只用于位置。
 
 ## 目录约定
 
@@ -122,7 +123,36 @@ pdftoppm -f 24 -l 27 -png -r 120 response-letter.pdf work\p24
 3. 用 `\tag{实际编号}` 写入回复信；无编号公式用 `equation*`。
 4. 全文搜索 `\(` 中是否还有手写编号、`T_{UP}`、`C1=`、`nF` 出界等旧写法。
 
-### 6. 位置定位与位置审查
+### 6. 红蓝文字一致性审查（源码对源码）
+
+两侧都是 LaTeX，所以文本比对直接用源码，不经过 PDF：
+
+```powershell
+python scripts/verify_revision_text.py `
+  --manuscript V2/sn-article.tex `
+  --response "V2/response letter/response-letter.tex" `
+  --bib V2/ref.bib `
+  --markdown "V2/response letter/work/text-audit.md"
+```
+
+判定：
+
+| 状态 | 含义 | 处理 |
+|---|---|---|
+| `VERBATIM` | 红字在正文源码中逐字存在（覆盖率 1.0） | 通过 |
+| `CLOSE` | 覆盖率 ≥0.85，多为 `Fig.~8` 对 `\ref{...}`、单位空格差异 | 人工确认编号一致 |
+| `REVIEW` | 覆盖率 0.30–0.85，红字有改写或句子顺序不同 | 逐条人工核对，必要时改回正文原句 |
+| `MISSING` | 覆盖率 <0.30，正文中找不到 | 失败 |
+| `DELETED (ok)` | 蓝字已不在正文 | 通过 |
+| `STILL-PRESENT` | 蓝字仍留在正文 | 失败 |
+
+注意：
+
+- 参考文献条目不在 `sn-article.tex`，必须传 `--bib ref.bib`；
+- 响应侧 `Fig. 8` 与源码 `\ref{fig_C1}` 会被判为 `CLOSE`，确认渲染编号一致即可；
+- 表格脚注、公式重排也可能落入 `REVIEW`，以人工比对为准。
+
+### 7. 位置定位与位置审查
 
 审稿人要求“修改处必须给页码/栏/段落”时，用 `scripts/locate_manuscript_positions.py`。它以最终编译 PDF 的坐标为准，不依赖源码行号，因此重排版后仍可重新计算。
 
@@ -145,7 +175,7 @@ python scripts/locate_manuscript_positions.py `
 
 结果写入 `work/positions.md`，不要提交。页码全部通过后才算位置审查完成。
 
-### 7. 独立编译与提交检查
+### 8. 独立编译与提交检查
 
 ```powershell
 xelatex -interaction=nonstopmode -halt-on-error response-letter.tex
@@ -181,6 +211,8 @@ xelatex -interaction=nonstopmode -halt-on-error response-letter.tex
 - [ ] 参考文献重编号有说明
 - [ ] 每条修订段落都有 page/column/paragraph 位置
 - [ ] 定位器复核通过（页码全部匹配，栏/段差异已人工确认）
+- [ ] 红字逐字比对正文 LaTeX 源码（CLOSE/REVIEW 已人工确认）
+- [ ] 蓝字在正文源码中已不存在
 - [ ] 独立 XeLaTeX 编译无错误
 - [ ] `work/` 与构建产物未进入版本库
 - [ ] 版本目录为 V1（初投）/ V2（返修）
