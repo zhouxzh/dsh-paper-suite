@@ -20,4 +20,5 @@ Bundling upstream files changes the licensing obligation. Then you must:
 4. state in `README.md` that the skill is redistributed, not authored here.
 
 Until that is done, keep upstream skills as separate installs and let this suite
-ship only its own `paper-evidence` and `paper-latex-cn`.
+ship only its own local skills: `paper-evidence`, `paper-latex-cn`,
+`reviewer-response-letter`, and `paper-cover-letter`.

@@ -2,7 +2,7 @@
 
 [![test](https://github.com/zhouxzh/dsh-paper-suite/actions/workflows/test.yml/badge.svg)](https://github.com/zhouxzh/dsh-paper-suite/actions/workflows/test.yml)
 
-论文套件：**一个 Host 插件 + 两个 skill**。插件负责必须被执行的动作（生成骨架、核对引用、编译、拉取证据），skill 负责必须被记住的判断规则（证据边界、中文 LaTeX 约定）。
+论文套件：**一个 Host 插件 + 四个 skill**。插件负责必须被执行的动作（生成骨架、核对引用、编译、拉取证据），skill 负责必须被记住的判断规则（证据边界、中文 LaTeX 约定、审稿回复信和 cover letter）。
 
 ## 组成
 
@@ -11,10 +11,12 @@
 | 工具 | 作用 |
 |---|---|
 | `paper_scaffold` | 生成中文 LaTeX 论文骨架，已存在文件一律跳过，手写正文不会被覆盖 |
-| `paper_audit` | 离线审计：引用 ↔ `.bib` 双向核对、重复键、缺字段、花括号、占位符、claim map locator、作者 TODO、PDF 新鲜度 |
+| `paper_audit` | 离线审计：引用 ↔ `.bib` 双向核对、重复键、缺字段、花括号、占位符、claim map locator、作者 TODO、PDF 新鲜度、内部实验代号泄漏与实验报告式 Results |
 | `paper_build` | latexmk 编译，返回结构化诊断：引擎、页数、错误、未定义引用、缺字形、overfull box |
 | `paper_sync_evidence` | 从远程代码仓只拉 `.csv/.json/.md/.yaml/.bib` 到 `evidence/`，逐个记 SHA-256；二进制产物拒收 |
 | `paper_kit` | 骨架 + 三处仓库登记 + 审计 +（可选）编译，一次跑完 |
+
+`paper_review` 额外给出四维评分：完整、结果、逻辑、**学术表达**。学术表达层检查标题/摘要/Results 中的内部 run 标识（如 `canonical_v2`、`encoder_l_v1.r6`）、Results 的实验台账化（协议词、审计词、编号裁决、图表句首占比）、图注来源，以及“不显著 = 等价”的表述。
 
 ### Skill（`skills/`）
 
@@ -22,6 +24,8 @@
 |---|---|
 | `paper-evidence` | 数字必须绑定证据文件与协议；协议不混池；negative 必须保留；claim 状态如何判定 |
 | `paper-latex-cn` | 中文稿的目录、前言、章节、表格约定与编译排错顺序 |
+| `reviewer-response-letter` | 从 DOCX 迁移审稿人回复信，保持蓝色删除/红色新增、公式编号、正式论文图片和独立编译 |
+| `paper-cover-letter` | 按欧洲学术信函版式生成初投稿/返修 cover letter，核对稿号、页数、数字和声明 |
 
 skill 是纯文件，复制进技能根即可被 `dsh-skill-filesystem` 扫描到。**新增 skill 后需要新开 DSH 会话**，当前会话不会热更新。
 
