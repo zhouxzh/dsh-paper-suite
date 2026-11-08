@@ -38,6 +38,7 @@ metadata:
 15. **版本命名跟随投稿历史**：`V1` = 初投稿，`V2` = 当前返修稿；回复信放 `V2/response letter/`，不得因草稿迭代出现 `V3`。
 16. **与 cover letter 共享身份元数据**：同一轮投稿中，cover letter 与 response letter 的作者全名（含称谓）、学院、学校、城市邮编国家、邮箱、期刊名、稿件标题、稿号和落款日期必须完全相同。两份文件的版式可以不同，但这些字段必须逐字一致；改一处就要同步另一处，并用 `paper-cover-letter` 的 `scripts/check_letter_identity.py` 核对。
 17. **地址只写到机构级**：收件人写 `Editorial Office` + 期刊名即可；作者地址写学院、学校、城市邮编、国家加邮箱，不写楼栋、房间号和门牌号。只有期刊指南明确要求完整邮政地址时才补充。
+18. **位置以最终编译 PDF 为准**：每条回复中的 `page X, left/right column, paragraph Y` 必须来自最终排版后的正文 PDF，不能沿用旧稿或源码行号。正文重新排版后必须重跑定位器并更新全部位置；旧位置一律视为待核查。
 
 ## 目录约定
 
@@ -121,7 +122,30 @@ pdftoppm -f 24 -l 27 -png -r 120 response-letter.pdf work\p24
 3. 用 `\tag{实际编号}` 写入回复信；无编号公式用 `equation*`。
 4. 全文搜索 `\(` 中是否还有手写编号、`T_{UP}`、`C1=`、`nF` 出界等旧写法。
 
-### 6. 独立编译与提交检查
+### 6. 位置定位与位置审查
+
+审稿人要求“修改处必须给页码/栏/段落”时，用 `scripts/locate_manuscript_positions.py`。它以最终编译 PDF 的坐标为准，不依赖源码行号，因此重排版后仍可重新计算。
+
+```powershell
+python scripts/locate_manuscript_positions.py `
+  --pdf V2/out/sn-article.pdf `
+  --response "V2/response letter/response-letter.tex" `
+  --markdown "V2/response letter/work/positions.md"
+```
+
+脚本行为：
+
+- 从 `addedblock` / `deletedblock` 抽取修订段落；
+- 在 PDF 中按“页 → 栏 → 段落 → 行”定位；
+- 读取回复中已写的 `page N ... column ... paragraph N` 并比对；
+- `deletedblock` 在修订稿中找不到 = 正确（已删除）；找到了 = `STILL-PRESENT` 错误；
+- 新增段落找不到 = `NOT-FOUND` 错误；
+- 页码不符 = `PAGE a->b` 错误；栏/段不符标为 `COLUMN?` / `PARA?`，需人工复核，因为 Poppler 有时把双栏合并成一个 block；
+- 若正文 PDF 带 `lineno` 行号，会附带提取印刷行号。
+
+结果写入 `work/positions.md`，不要提交。页码全部通过后才算位置审查完成。
+
+### 7. 独立编译与提交检查
 
 ```powershell
 xelatex -interaction=nonstopmode -halt-on-error response-letter.tex
@@ -155,6 +179,8 @@ xelatex -interaction=nonstopmode -halt-on-error response-letter.tex
 - [ ] 公式为显示环境、`\mathrm` 下标、编号与正文 PDF 一致
 - [ ] 数字与单位同处数学环境
 - [ ] 参考文献重编号有说明
+- [ ] 每条修订段落都有 page/column/paragraph 位置
+- [ ] 定位器复核通过（页码全部匹配，栏/段差异已人工确认）
 - [ ] 独立 XeLaTeX 编译无错误
 - [ ] `work/` 与构建产物未进入版本库
 - [ ] 版本目录为 V1（初投）/ V2（返修）
