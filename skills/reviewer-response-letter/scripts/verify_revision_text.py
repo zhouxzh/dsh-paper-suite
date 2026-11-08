@@ -36,6 +36,21 @@ DOLLAR_INLINE = re.compile(r"\$[^$]*\$", re.S)
 BRACKET_MATH = re.compile(r"\\\[.*?\\\]", re.S)
 PAREN_MATH = re.compile(r"\\\(.*?\\\)", re.S)
 CITE = re.compile(r"\\(?:cite|citep|citet|ref|eqref|autoref|label)\*?(?:\[[^\]]*\])?\{[^{}]*\}")
+REF = re.compile(r"\\(?:ref|eqref|autoref)\{([^}]+)\}")
+CITE_ARG = re.compile(r"\\cite[tp]?\*?(?:\[[^\]]*\])?\{([^}]+)\}")
+NEWLABEL = re.compile(r"\\newlabel\{([^}]+)\}\{\{([^}]+)\}")
+BIBCITE = re.compile(r"\\bibcite\{([^}]+)\}\{([^}]+)\}")
+
+
+def load_aux(path: Path) -> tuple[dict[str, str], dict[str, str]]:
+    """Parse .aux for label->number and citation-key->number."""
+    labels, cites = {}, {}
+    if not path.is_file():
+        return labels, cites
+    text = path.read_text(encoding="utf-8", errors="replace")
+    labels = {key: value for key, value in NEWLABEL.findall(text)}
+    cites = {key: value for key, value in BIBCITE.findall(text)}
+    return labels, cites
 HREF = re.compile(r"\\href\{[^{}]*\}\{([^{}]*)\}")
 TEXTCOLOR = re.compile(r"\\textcolor\{[^{}]*\}")
 FORMAT_CMD = re.compile(
@@ -47,8 +62,21 @@ ANY_CMD = re.compile(r"\\[A-Za-z]+\*?(?:\[[^\]]*\])?")
 BRACKET_REF = re.compile(r"\{\[\}\s*\d+(?:\s*,\s*\d+)*\s*\{\]\}|\[\s*\d+(?:\s*,\s*\d+)*\s*\]")
 
 
-def latex_to_words(tex: str) -> str:
+def latex_to_words(
+    tex: str,
+    labels: dict[str, str] | None = None,
+    cites: dict[str, str] | None = None,
+) -> str:
+    labels = labels or {}
+    cites = cites or {}
     tex = re.sub(r"(?m)(?<!\\)%.*$", "", tex)
+    # Resolve cross-references and citations with the numbers LaTeX actually
+    # printed (from the .aux file), so "Fig. 8" matches "Fig. \ref{fig_C1}".
+    tex = REF.sub(lambda m: f" {labels.get(m.group(1).strip(), ' ')} ", tex)
+    tex = CITE_ARG.sub(
+        lambda m: " " + " ".join(cites.get(key.strip(), " ") for key in m.group(1).split(",")) + " ",
+        tex,
+    )
     tex = MATH_ENVS.sub(" ", tex)
     tex = DOLLAR_BLOCK.sub(" ", tex)
     tex = BRACKET_MATH.sub(" ", tex)
@@ -56,6 +84,9 @@ def latex_to_words(tex: str) -> str:
     tex = DOLLAR_INLINE.sub(" ", tex)
     tex = CITE.sub(" ", tex)
     tex = BRACKET_REF.sub(" ", tex)
+    # Drop circuit-variable tokens (CGS, CGD, VGS, C1, D1, RG, VCC ...); the
+    # manuscript mixes plain text and math forms for the same symbol.
+    tex = re.sub(r"\b(?:[A-Z]{2,}[0-9_]*|[A-Z][0-9]+|R[Gg]|V[a-z]{2,})\b", " ", tex)
     tex = HREF.sub(r" \1 ", tex)
     tex = TEXTCOLOR.sub("", tex)
     tex = FORMAT_CMD.sub("", tex)
@@ -69,18 +100,25 @@ def latex_to_words(tex: str) -> str:
 
 
 def best_match(probe: str, corpus: str) -> tuple[float, str]:
-    """Return (covered fraction, context snippet) via longest common block."""
+    """Return (covered fraction, context) around the best matching window."""
     matcher = difflib.SequenceMatcher(None, probe, corpus, autojunk=False)
-    match = matcher.find_longest_match(0, len(probe), 0, len(corpus))
-    coverage = match.size / max(len(probe), 1)
-    start = max(match.b - 40, 0)
-    context = corpus[start: match.b + match.size + 40]
+    anchor = matcher.find_longest_match(0, len(probe), 0, len(corpus))
+    start = max(anchor.b - 200, 0)
+    window = corpus[start: start + len(probe) + 400]
+    local = difflib.SequenceMatcher(None, probe, window, autojunk=False)
+    matched = sum(block.size for block in local.get_matching_blocks())
+    coverage = matched / max(len(probe), 1)
+    context = window[max(anchor.b - start - 40, 0): max(anchor.b - start - 40, 0) + 160]
     return coverage, context
 
 
 def extract(tex: str) -> list[dict]:
     items = []
     for match in BLOCK_RE.finditer(tex):
+        before = tex[max(0, match.start() - 240): match.start()]
+        if "References section" in before:
+            items.append({"kind": "reference", "text": latex_to_words(match.group(2))})
+            continue
         kind = "red" if match.group(1) == "addedblock" else "blue"
         items.append({"kind": kind, "text": latex_to_words(match.group(2))})
     for match in INLINE_RE.finditer(tex):
@@ -96,6 +134,7 @@ def main() -> int:
     parser.add_argument("--manuscript", type=Path, required=True)
     parser.add_argument("--response", type=Path, required=True)
     parser.add_argument("--bib", type=Path, help="bibliography .bib; reference entries live here")
+    parser.add_argument("--aux", type=Path, help="LaTeX .aux; supplies real figure/equation/citation numbers")
     parser.add_argument("--markdown", type=Path)
     parser.add_argument("--json", type=Path)
     args = parser.parse_args()
@@ -105,7 +144,10 @@ def main() -> int:
             print(f"ERROR: cannot read {path}", file=sys.stderr)
             return 2
 
-    manuscript = latex_to_words(args.manuscript.read_text(encoding="utf-8", errors="replace"))
+    labels, cites = load_aux(args.aux) if args.aux else ({}, {})
+    manuscript = latex_to_words(
+        args.manuscript.read_text(encoding="utf-8", errors="replace"), labels, cites
+    )
     if args.bib and args.bib.is_file():
         manuscript += " " + latex_to_words(args.bib.read_text(encoding="utf-8", errors="replace"))
 
@@ -118,7 +160,9 @@ def main() -> int:
         probe = item["text"]
         if not probe:
             continue
-        if item["kind"] == "red":
+        if item["kind"] == "reference":
+            status, coverage, context = "REFERENCE (skip)", 0.0, ""
+        elif item["kind"] == "red":
             if probe in manuscript:
                 status, coverage, context = "VERBATIM", 1.0, ""
             else:

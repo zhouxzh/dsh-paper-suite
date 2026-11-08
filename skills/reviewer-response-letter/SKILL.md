@@ -132,8 +132,11 @@ python scripts/verify_revision_text.py `
   --manuscript V2/sn-article.tex `
   --response "V2/response letter/response-letter.tex" `
   --bib V2/ref.bib `
+  --aux V2/sn-article.aux `
   --markdown "V2/response letter/work/text-audit.md"
 ```
+
+`--aux` 很关键：脚本从 LaTeX 的 `.aux` 读取 `\newlabel` 与 `\bibcite`，把正文里的 `\ref{fig_C1}`、`\eqref{eq18}`、`\cite{...}` 换成最终印刷编号，再与回复信中写死的 `Fig. 8`、`(16)`、`[7]` 比对。不要靠猜编号。
 
 判定：
 
@@ -148,9 +151,10 @@ python scripts/verify_revision_text.py `
 
 注意：
 
-- 参考文献条目不在 `sn-article.tex`，必须传 `--bib ref.bib`；
-- 响应侧 `Fig. 8` 与源码 `\ref{fig_C1}` 会被判为 `CLOSE`，确认渲染编号一致即可；
-- 表格脚注、公式重排也可能落入 `REVIEW`，以人工比对为准。
+- 参考文献条目自动标为 `REFERENCE (skip)`，不参与正文文本比对；
+- `\ref`/`\eqref`/`\cite` 通过 `--aux` 换成真实编号后比对，剩余 `CLOSE` 通常只是单位空格或标点差异；
+- 表格脚注、公式重排可能落入 `REVIEW`，以人工比对为准；
+- **红字必须是正文原句**。如果一段红字只是“回复里的概述/解释”，应改为黑色；继续标红会被判为 `REVIEW`，因为它在正文中并不逐字存在。
 
 ### 7. 位置定位与位置审查
 
