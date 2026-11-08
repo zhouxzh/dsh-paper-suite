@@ -42,6 +42,10 @@ metadata:
 19. **红字比对源码，蓝字必须消失**：红色段落必须能在正文 LaTeX 源码中逐字找到（参考文献查 `.bib`）；`CLOSE` / `REVIEW` 说明有改写或编号差异，必须人工确认后才可通过。蓝色段落必须在正文源码中找不到；仍能找到即说明“删了但没删干净”。文本一致性不要用 PDF 比对，PDF 只用于位置。
 20. **网页投稿另存纯文本**：投稿系统只给文本框时，用 `scripts/export_response_letter_text.py` 从 LaTeX 生成 `.txt`。纯文本保留 `Reviewer comment / Response / Revised manuscript text / Deleted manuscript text` 结构，颜色无法保留，因此用文字标签替代；**每个段落必须一整行，禁止硬换行**。
 21. **没有独立 cover letter 时并入首页**：若投稿系统不支持 cover letter，就把 cover letter 的三部分内容并入 response letter 首页：提交修订稿声明、三条左右主要修改、结果与作者/非一稿多投/利益冲突声明；随后删除 `cover-letter/` 目录，避免两份文件内容不一致。
+22. **按投稿字段拆分文本**：系统同时提供“给编辑部留言”和“逐条回复审稿人”两个文本框时：
+    - 编辑部留言用短文本，只写材料清单、作者/非一稿多投/利益冲突确认，不重复逐条回复；
+    - 审稿人回复框用 `--reviewer-box` 导出的纯文本，只含 Editor/Reviewer 意见与 `Response`，去掉信头、提交声明和签名；
+    - PDF 回复信作为完整附件上传；若没有附件栏，则只填两个文本框。
 
 ## 目录约定
 

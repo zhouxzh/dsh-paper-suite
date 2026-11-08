@@ -126,6 +126,7 @@ def main() -> int:
     parser.add_argument("-o", "--output", type=Path)
     parser.add_argument("--title", default="")
     parser.add_argument("--manuscript-id", default="")
+    parser.add_argument("--reviewer-box", type=Path, help="also write the comment/response-only text for the web form")
     args = parser.parse_args()
 
     if not args.tex.is_file():
@@ -216,6 +217,15 @@ def main() -> int:
     output = args.output or args.tex.with_suffix(".txt")
     output.write_text(text, encoding="utf-8")
     print(f"wrote {output} ({len(text)} chars, {len(text.splitlines())} lines)")
+
+    if args.reviewer_box:
+        marker = text.find("== ")
+        if marker < 0:
+            print("ERROR: no section heading found for --reviewer-box", file=sys.stderr)
+            return 1
+        args.reviewer_box.parent.mkdir(parents=True, exist_ok=True)
+        args.reviewer_box.write_text(text[marker:].strip() + "\n", encoding="utf-8")
+        print(f"wrote {args.reviewer_box} (comment/response block only)")
     return 0
 
 
