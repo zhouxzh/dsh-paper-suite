@@ -36,6 +36,7 @@ metadata:
 13. **参考文献重编号要说明**：正文新增文献导致引用编号变化时，在相关回复中补一句说明，例如 “the reference numbers have changed because several references were added”。
 14. **标题不缩进**：使用 KOMA-Script `parskip=half`，段间留白、不首行缩进；回复信不使用 `scrlttr2`（长文档易编译卡死）。
 15. **版本命名跟随投稿历史**：`V1` = 初投稿，`V2` = 当前返修稿；回复信放 `V2/response letter/`，不得因草稿迭代出现 `V3`。
+16. **与 cover letter 共享身份元数据**：同一轮投稿中，cover letter 与 response letter 的作者全名（含称谓）、学院、学校、完整地址、邮箱、期刊名、稿件标题、稿号和落款日期必须完全相同。两份文件的版式可以不同，但这些字段必须逐字一致；改一处就要同步另一处，并用 `paper-cover-letter` 的 `scripts/check_letter_identity.py` 核对。
 
 ## 目录约定
 
