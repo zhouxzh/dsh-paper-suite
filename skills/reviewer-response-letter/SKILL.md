@@ -56,12 +56,12 @@ metadata:
 17. **地址只写到机构级**：收件人写 `Editorial Office` + 期刊名即可；作者地址写学院、学校、城市邮编、国家加邮箱，不写楼栋、房间号和门牌号。只有期刊指南明确要求完整邮政地址时才补充。
 18. **位置以最终编译 PDF 为准**：每条回复中的 `page X, left/right column, paragraph Y` 必须来自最终排版后的正文 PDF，不能沿用旧稿或源码行号。正文重新排版后必须重跑定位器并更新全部位置；旧位置一律视为待核查。
 19. **红字比对源码，蓝字必须消失**：红色段落必须能在正文 LaTeX 源码中逐字找到（参考文献查 `.bib`）；`CLOSE` / `REVIEW` 说明有改写或编号差异，必须人工确认后才可通过。蓝色段落必须在正文源码中找不到；仍能找到即说明“删了但没删干净”。文本一致性不要用 PDF 比对，PDF 只用于位置。
-20. **网页投稿另存纯文本**：投稿系统只给文本框时，用 `scripts/export_response_letter_text.py` 从 LaTeX 生成 `.txt`。纯文本保留 `Reviewer comment / Response / Revised manuscript text / Deleted manuscript text` 结构，颜色无法保留，因此用文字标签替代；**每个段落必须一整行，禁止硬换行**。
+20. **网页投稿的文本框用手写摘要**：投稿系统通常强制填写“编辑部留言”和“审稿人回复”两个文本框。不要从 LaTeX 批量导出全文，也不要重复 25 条逐条回复；两个框各写 1 段纯文本：编辑部框写材料清单、回复结构、主要修改方向与作者/非一稿多投/利益冲突声明，审稿人框感谢各审稿人并指明详细逐条回复在 response letter PDF 附件中。**每个段落必须一整行，禁止硬换行**；详细回复只维护在 `response-letter.tex` 与其 PDF，避免两处内容不一致。
 21. **没有独立 cover letter 时并入首页**：若投稿系统不支持 cover letter，就把 cover letter 的三部分内容并入 response letter 首页：提交修订稿声明、三条左右主要修改、结果与作者/非一稿多投/利益冲突声明；随后删除 `cover-letter/` 目录，避免两份文件内容不一致。
 22. **PDF 附件不含首页信头**：当投稿系统另有“编辑部留言”框时，上传的 response PDF 默认只保留 Point-by-Point Response，不重复信头、提交声明和签名；另提供 `response-letter-with-cover.tex` 以 `\def\WITHCOVER{}` 构建完整正式信函版备用。
 23. **按投稿字段拆分文本**：系统同时提供“给编辑部留言”和“逐条回复审稿人”两个文本框时：
     - 编辑部留言用短文本，只写材料清单、作者/非一稿多投/利益冲突确认，不重复逐条回复；
-    - 审稿人回复框用 `--reviewer-box` 导出的纯文本，只含 Editor/Reviewer 意见与 `Response`，去掉信头、提交声明和签名；
+    - 审稿人回复框用手写短文本：感谢各审稿人、说明全部意见已逐条回应、指明详细回复与修订位置见 response letter PDF 附件，并列出 3-5 条主要修改要点；不要把逐条回复全文粘进文本框；
     - PDF 回复信作为完整附件上传；若没有附件栏，则只填两个文本框。
 
 ## 目录约定
@@ -206,18 +206,14 @@ python scripts/locate_manuscript_positions.py `
 
 结果写入 `work/positions.md`，不要提交。页码全部通过后才算位置审查完成。
 
-### 8. 纯文本导出（网页投稿系统）
+### 8. 网页投稿的两个文本框（手写，不自动导出）
 
-```powershell
-python scripts/export_response_letter_text.py `
-  "V2/response letter/response-letter.tex" `
-  -o "V2/response letter/response-letter.txt"
-```
+投稿系统强制填写“编辑部留言”和“审稿人回复”两个框，而详细逐条回复已由 `response-letter.pdf` 附件承担，因此两个框均为手写摘要：
 
-- 评论、回复、修订文字分别标注为 `Reviewer comment`、`Response`、`Revised manuscript text`、`Deleted manuscript text`；
-- 每个段落一整行，不能按列宽硬换行；
-- 不保留颜色，颜色语义改由上述标签表达；
-- 导出后检查：无 `\` 命令、25 个 comment/response 块完整、段落没有被拆行。
+- 编辑部留言：材料清单（clean manuscript、markup manuscript、point-by-point response）、回复结构（先编辑部、后 Reviewer 1/2/3）、3-5 条主要修改方向、作者/非一稿多投/利益冲突声明，不重复逐条回复；
+- 审稿人回复框：感谢各审稿人、说明全部意见已逐条回应、指明详细回复与修订位置见 PDF 附件，并列出 3-5 条主要修改要点；
+- 每个段落必须一整行，不能按列宽硬换行；不出现 LaTeX 命令；
+- 两个 txt 直接手工维护，不再由脚本生成；若此前存在自动导出脚本，应删除以免误覆盖手写内容。
 
 ### 9. 独立编译与提交检查
 
