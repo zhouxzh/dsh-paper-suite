@@ -41,6 +41,7 @@ metadata:
 18. **位置以最终编译 PDF 为准**：每条回复中的 `page X, left/right column, paragraph Y` 必须来自最终排版后的正文 PDF，不能沿用旧稿或源码行号。正文重新排版后必须重跑定位器并更新全部位置；旧位置一律视为待核查。
 19. **红字比对源码，蓝字必须消失**：红色段落必须能在正文 LaTeX 源码中逐字找到（参考文献查 `.bib`）；`CLOSE` / `REVIEW` 说明有改写或编号差异，必须人工确认后才可通过。蓝色段落必须在正文源码中找不到；仍能找到即说明“删了但没删干净”。文本一致性不要用 PDF 比对，PDF 只用于位置。
 20. **网页投稿另存纯文本**：投稿系统只给文本框时，用 `scripts/export_response_letter_text.py` 从 LaTeX 生成 `.txt`。纯文本保留 `Reviewer comment / Response / Revised manuscript text / Deleted manuscript text` 结构，颜色无法保留，因此用文字标签替代；**每个段落必须一整行，禁止硬换行**。
+21. **没有独立 cover letter 时并入首页**：若投稿系统不支持 cover letter，就把 cover letter 的三部分内容并入 response letter 首页：提交修订稿声明、三条左右主要修改、结果与作者/非一稿多投/利益冲突声明；随后删除 `cover-letter/` 目录，避免两份文件内容不一致。
 
 ## 目录约定
 

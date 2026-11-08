@@ -144,6 +144,14 @@ def main() -> int:
         m = re.search(r"\\newcommand\{\\manuscriptid\}\{([^}]*)\}", tex)
         manuscript_id = m.group(1).strip() if m else ""
 
+    # Expand the letter's own metadata macros before stripping commands.
+    journal = ""
+    macro = re.search(r"\\newcommand\{\\journalname\}\{([^}]*)\}", tex)
+    if macro:
+        journal = macro.group(1).strip()
+    for name, value in (("papertitle", title), ("manuscriptid", manuscript_id), ("journalname", journal)):
+        body = body.replace("\\" + name, value)
+
     lines: list[str] = ["Response to Reviewers"]
     if manuscript_id:
         lines.append(f"Manuscript ID: {manuscript_id}")
@@ -151,7 +159,18 @@ def main() -> int:
         lines.append(f"Title: {title}")
     lines.append("")
 
-    # Skip the formal letterhead; start at the first section heading.
+    # Keep the opening letter text (submission statement, main changes,
+    # declarations), but drop the formal letterhead above it.
+    # scrartcl response letters use a literal greeting, not scrlttr2's \opening.
+    opening = re.search(r"Dear Editor[^,\n]*,", body)
+    if opening:
+        end = body.find(r"\vspace{1.2em}", opening.end())
+        intro = body[opening.end(): end if end > 0 else opening.end()]
+        lines.extend([opening.group(0).strip(), ""])
+        for para in paragraphs(intro):
+            lines.extend([para, ""])
+
+    # Skip the rest of the letterhead; start at the first section heading.
     start = body.find(r"\section*{")
     if start > 0:
         body = body[start:]
